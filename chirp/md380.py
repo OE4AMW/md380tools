@@ -133,58 +133,60 @@ struct { //0x1F025 into rdt?
     // DCS probably doesn't work at all
 
   //First byte is 62 for digital, 61 for analog
-  //0x25 into rdt
-  u8 mode;   //Upper nybble is 6 for normal squelch, 4 for tight squelch
-             //Low nybble is
-             //|2 for digital, |1 for nbfm, |8 for 25khz  (fm)
-  u8 slot;       //Upper nybble is the color code
-                 //lower nybble is bitfield:
-                 // |4 for S1, |8 for S2
-                 // |2 for RX-ONLY
-                 // |1 for talkaround allowed
-                 //slotnotes:  0000 0000
-                 //            colr 12rt
-  char priv;           //Upper nybble is 0 for cleartex, 1 for Basic Privacy, 2 for Enhanced Privacy.
-                        //upper nybble |4 is "send compressed udp data header"
-                       //Low nybble is key index.  (E is slot 15, 0 is slot 1.)
-  char wase0;          //Unknown, normally E0
-                        //0xa0 for "compressed udp data header" turned on
-  char power;          //24 for high power, 04 for low power TODO
-                        // high nibble:
-                         // |8 is color code admit criteria
-                         // |4 is cchannel free admit criteria
-                         // |2 is high power enabled, off for low power
-                         // |1 is vox enabled
-                        // low nibble: unknown, usually 0x4
-                       // 0 0  0 0   0 0  0 0
-                       // CcCf HpVx            
-  char wasc3;          //Unknown, normally C3
-  //0x2E
+  u8 loneworker:1,
+     unknown1a:1,
+     squelch:1,     // 0: Tight, 1: Normal
+     autoscan:1,
+     fmbw:2,        // 0: 12.5 KHz, 1: 20 KHz, 2: 25 KHz
+     mode:2;        // 1: analog, 2: digital
+  u8 color_code:4,       // 0-15
+     slot:2,        // slot 1: 1, slot 2: 2, never zero
+     rxonly:1,      // 1 for tx inhibit
+     allow_talkaround:1;
+  u8 data_call_confirmed:1,
+     priv_call_confirmed:1,
+     priv_mode:2,   // 0 for cleartex, 1 for Basic Privacy, 2 for Enhanced Privacy.
+     priv_key:4;    // key index.  (E is slot 15, 0 is slot 1.)
+  u8 displaypttid:1,// 0: Display PTT ID, 1: default
+     compressed_udp_header:1,   // 0: compressed_udp_header, 1: default
+     was2:2,
+     emergency_alarm_ack:1,
+     was0:1,
+     rxreffreq:2;   // [Low, Med, High]
+  u8 admit:2,       // [Always, Channel Free, Correct CTCSS, Color Code]
+     high_power:1,
+     vox:1,
+     qtreverse:1,   // 0: 180, 1: 120
+     reverse_burst:1,
+     txreffreq:2;   // [Low, Med, High]
+  u8 wasc3;          //Unknown, normally C3
   ul16 contact;        //Digital contact name.  (TX group.)  TODO
-  //0x2D
-  char unknown[3];     //Certainly analog or digital settings, but I don't know the bits yet.
-  //0x30
-  u8 scanlist;         //Not yet supported.
-  //0x31 into rdt
-  u8 grouplist;        //DMR Group list index. TODO
-  //0x32
-  char gpssystem; //0x00 for none, 0x01 for gps system 1, 0x10 for gps system 16
+  u8 tot;           // n * 15 seconds, 0 is infinite, 4 (60s) is default
+  u8 totrekey;      // TOT Rekey Delay (s)
+  u8 emergency_system;  // 0: None, 1-32: emergency system number
+  u8 scanlist;      //Not yet supported.
+  u8 grouplist;     //DMR Group list index. TODO
+  u8 gpssystem; //0x00 for none, 0x01 for gps system 1, 0x10 for gps system 16
   //0x33
-  char unknown22;
-  //0x34
-  char unknown23;
-  //0x35
+  u8 decode8:1,     // RX Signaling System Decode n
+     decode7:1,
+     decode6:1,
+     decode5:1,
+     decode4:1,
+     decode3:1,
+     decode2:1,
+     decode1:1;
+  u8 wasFF;
   lbcd rxfreq[4];
   //0x39
   lbcd txfreq[4];      //Stored as frequency, not offset.
   //0x3D
-  lbcd ctone[2];       //Receiver tone.  (0xFFFF when unused.)
-  lbcd rtone[2];       //Transmitter tone.
-  //0x41
-  char yourguess11;
-  char yourguess12;
-  char yourguess2;
-  char   gps; 
+  lbcd rxtone[2];       //Receiver tone.  (0xFFFF when unused.)
+  lbcd txtone[2];       //Transmitter tone.
+  u8 rxsignaling;   // [Off, DTMF-1, DTMF-2, DTMF-3, DTMF-4]
+  u8 txsignaling;   // [Off, DTMF-1, DTMF-2, DTMF-3, DTMF-4]
+  u8 yourguess1;
+  u8 gps; 
                 //|1 for disable send gps data
                 //|2 for disable receive gps data
 //0x45
