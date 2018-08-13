@@ -276,6 +276,73 @@ def upload_codeplug(dfu, filename):
     finally:
         print("Done.")
 
+def upload_codeplug_md2017(dfu, filename):
+    """Uploads a codeplug from the radio to the host."""
+    dfu.md380_custom(0x91, 0x01)  # Programming Mode
+    # dfu.md380_custom(0xa2,0x01); #Returns "DR780...", seems to crash client.
+    # hexdump(dfu.get_command());  #Gets a string.
+    dfu.md380_custom(0xa2, 0x02)
+    dfu.md380_custom(0xa2, 0x02)
+    dfu.md380_custom(0xa2, 0x03)
+    dfu.md380_custom(0xa2, 0x04)
+    dfu.md380_custom(0xa2, 0x07)
+
+    dfu.set_address(0x00000000)  # Zero address, used by configuration tool.
+
+    tmpDfu = "" #temp buffer for CRC calculation
+    f = open(filename, 'wb')
+    block_size = 1024
+    try:
+        # Codeplug region is 0 to 3ffffff, but only the first 256k are used.
+        for block_number in range(2, 0x102):
+            data = dfu.upload(block_number, block_size)
+            status, timeout, state, discarded = dfu.get_status()
+            # print("Status is: %x %x %x %x" % (status, timeout, state, discarded))
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            if len(data) == block_size:
+                f.write(data)
+                for i in data:
+                    tmpDfu = tmpDfu + chr(i)
+                # hexdump(data);
+            else:
+                raise Exception('Upload failed to read full block.  Got %i bytes.' % len(data))
+                # dfu.md380_reboot()
+        sys.stdout.write('Finished first part. Adding dummy-DFU-Suffix.\n')
+        sys.stdout.flush()
+        suffix = [ 0x00, # bcdDevice lo ?
+        0x02, # bcdDevice hi ?
+        0x11, # idProductLo (OK)
+        0xDF, # idProductHi (OK)
+        0x83, # idVendor lo (OK)
+        0x04, # idVendor hi (OK)
+        0x1A, # bcdDFU field, fixed to 0x011A
+        0x01, # second byte
+        0x55, # DfuSignature: "UFD" char 1
+        0x46, # DfuSignature: "UFD" char 2
+        0x44, # DfuSignature: "UFD" char 3
+        0x10, # Length of suffix 16
+        0x12, # CRC Byte 1 -> TODO: how to calculate?
+        0x71, # CRC Byte 2 
+        0x65, # CRC Byte 3 
+        0x8E] # CRC Byte 4 
+        for x in suffix:
+            f.write(chr(x))
+        dfu.set_address(0x00110000, True)
+        for block_number in range(2, 0x242):
+            data = dfu.upload(block_number, block_size)
+            status, timeout, state, discarded = dfu.get_status()
+            # print("Status is: %x %x %x %x" % (status, timeout, state, discarded))
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            if len(data) == block_size:
+                f.write(data)
+                # hexdump(data);
+            else:
+                raise Exception('Upload failed to read full block.  Got %i bytes.' % len(data))
+                # dfu.md380_reboot()
+    finally:
+        print("Done.")
 
 def download_firmware(dfu, data):
     """ Download new firmware binary to the radio. """
@@ -456,6 +523,9 @@ Write firmware to the radio.
 Read a codeplug and write it to a file.
     md380-dfu read <codeplug.bin>
 
+Read a MD-2ß17 codeplug and write it to a file.
+    md380-dfu readmd2017 <codeplug.bin>
+
 Dump the bootloader from Flash memory.
     md380-dfu readboot <filename.bin>
 
@@ -486,6 +556,11 @@ def main():
                 import usb.core
                 dfu = init_dfu()
                 upload_codeplug(dfu, sys.argv[2])
+                print('Read complete')
+            elif sys.argv[1] == 'readmd2017':
+                import usb.core
+                dfu = init_dfu()
+                upload_codeplug_md2017(dfu, sys.argv[2])
                 print('Read complete')
             elif sys.argv[1] == 'readboot':
                 print("This only works from OS X.  Use the one in md380-tool with patched firmware for other bootloaders.")

@@ -159,6 +159,7 @@ class DFU(object):
         b = (address >> 8) & 0xFF
         c = (address >> 16) & 0xFF
         d = (address >> 24) & 0xFF
+        self.wait_till_ready() #needed for MD2017, otherwise client crashes when downloading codeplug
         self._device.ctrl_transfer(0x21, Request.DNLOAD, 0, 0, [0x21, a, b, c, d])
         if wait_till_ready_instead: #needed for MD2017
             if self.verbose:
